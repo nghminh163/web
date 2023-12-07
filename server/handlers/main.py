@@ -244,7 +244,7 @@ def register_main_router(app):
     app.add_api_route(
         path="/{path:path}",
         endpoint=route_processing,
-        methods=["GET"],
+        methods=["GET", "HEAD"],
         response_model=str,
         tags=["pages"],
         summary=None,
