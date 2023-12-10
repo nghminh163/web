@@ -19,6 +19,7 @@ template_env = Environment(loader=FileSystemLoader("./server/templates"), enable
 template_safe_env = Environment(loader=FileSystemLoader("./server/templates"), undefined=DebugUndefined)
 
 from server.toolkits.core.medium_parser import medium_parser_exceptions
+from server.toolkits.core.medium_parser import cache as medium_cache
 from server.toolkits.core.medium_parser.core import MediumParser
 from server.toolkits.core.medium_parser.utils import minify_html, is_valid_medium_post_id_hexadecimal
 

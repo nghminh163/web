@@ -2,14 +2,13 @@ import sentry_sdk
 from html5lib.html5parser import parse
 from html5lib import serialize
 from pydantic import BaseModel
-from aiohttp_client_cache import CachedSession, SQLiteBackend
 import pickle
 import aiohttp
 from fastapi.responses import HTMLResponse
 from loguru import logger
 
 import random
-from server import MediumParser, base_template, config, main_template, medium_parser_exceptions, minify_html, url_correlation, redis_storage, postleter_template, is_valid_medium_post_id_hexadecimal, ban_db
+from server import MediumParser, medium_cache, base_template, config, main_template, medium_parser_exceptions, minify_html, url_correlation, redis_storage, postleter_template, is_valid_medium_post_id_hexadecimal, ban_db
 from server.utils.error import (
     generate_error,
 )
@@ -36,7 +35,6 @@ class DeleteFromCache(BaseModel):
 
 
 async def report_problem(problem: ReportProblem):
-    logger.error("entering report problem")
     await send_message(f"New problem report: \n{problem.description}\n\n{problem.page}")
     return JSONResponse({"message": "OK"}, status_code=200)
 
@@ -47,16 +45,23 @@ async def route_processing(path: str, request: Request):
         return await main_page()
     else:
         if request.scope.get("query_string"):
-            url = request.url.path + "?" + request.scope["query_string"].decode()
+            path = request.url.path + "?" + request.scope["query_string"].decode()
         else:
-            url = request.url.path
-        url = url.removeprefix("/")
-        return await render_medium_post_link(url)
+            path = request.url.path
+        path = path.removeprefix("/")
+
+        if path.startswith("render_no_cache/"):
+            path = path.removeprefix("render_no_cache/")
+            return await render_medium_post_link(path, False)
+        elif path.startswith("@miro/"):
+            miro_data = path.removeprefix("@miro/")
+            return await miro_proxy(miro_data)
+        else:
+            return await render_medium_post_link(path)
 
 
 @trace
-async def miro_proxy(miro_path: str):
-    miro_data = miro_path.removeprefix("@miro/")
+async def miro_proxy(miro_data: str):
     async with aiohttp.ClientSession() as client:
         request = await client.get(
             f"https://miro.medium.com/{miro_data}",
@@ -66,32 +71,6 @@ async def miro_proxy(miro_path: str):
         request_content = await request.read()
         content_type = request.headers["Content-Type"]
     return Response(content=request_content, media_type=content_type)
-
-
-@trace
-async def render_no_cache(path_key: str):
-    logger.error("No cache render")
-    logger.error(path_key)
-    if is_valid_medium_post_id_hexadecimal(path_key):
-        medium_parser = MediumParser(path_key, timeout=config.TIMEOUT, host_address=config.HOST_ADDRESS)
-    else:
-        url = correct_url(path_key)
-        medium_parser = await MediumParser.from_url(url, timeout=config.TIMEOUT, host_address=config.HOST_ADDRESS)
-
-    post_id = medium_parser.post_id
-
-    try:
-        cache = SQLiteBackend('medium_cache.sqlite')
-        await cache.responses.delete(post_id)
-    except Exception as ex:
-        logger.exception(ex)
-
-    if await safe_check_redis_connection(redis_storage):
-        await redis_storage.delete(post_id)
-
-    return RedirectResponse(
-        f'/{path_key}',
-        status_code=302)
 
 
 @trace
@@ -110,13 +89,8 @@ async def render_iframe(iframe_id):
 
 @trace
 @aio_redis_cache(7 * 60)
-async def render_postleter(limit: int = 120, as_html: bool = False):
-    async with CachedSession(cache=SQLiteBackend('medium_cache.sqlite')) as session:
-        post_id_list = [i async for i in session.cache.responses.keys()]
-
-    limit = limit if len(post_id_list) > limit else len(post_id_list)
-
-    random_post_id_list = random.choices(post_id_list, k=limit)
+async def render_postleter(limit: int = 60, as_html: bool = False):
+    random_post_id_list = [i[0] for i in medium_cache.random(limit)]
 
     outlenget_posts_list = []
     for post_id in random_post_id_list:
@@ -165,14 +139,8 @@ async def main_page():
 
 
 @trace
-async def render_medium_post_link(path: str):
+async def render_medium_post_link(path: str, use_cache: bool = True):
     redis_available = await safe_check_redis_connection(redis_storage)
-
-    if path.startswith("render_no_cache/"):
-        path = path.removeprefix("render_no_cache/")
-        return await render_no_cache(path)
-    elif path.startswith("@miro/"):
-        return await miro_proxy(path)
 
     try:
         if is_valid_medium_post_id_hexadecimal(path):
@@ -181,12 +149,12 @@ async def render_medium_post_link(path: str):
             url = correct_url(path)
             medium_parser = await MediumParser.from_url(url, timeout=config.TIMEOUT, host_address=config.HOST_ADDRESS)
         medium_post_id = medium_parser.post_id
-        if redis_available:
+        if redis_available and use_cache:
             redis_result = await redis_storage.get(medium_post_id)
         else:
             redis_result = None
         if not redis_result:
-            await medium_parser.query()
+            await medium_parser.query(use_cache=use_cache)
             rendered_medium_post = await medium_parser.render_as_html(minify=False, template_folder="server/templates")
         else:
             rendered_medium_post = pickle.loads(redis_result)
@@ -197,7 +165,7 @@ async def render_medium_post_link(path: str):
             "Unable to identify the Medium article URL.",
             status_code=404,
         )
-    except (medium_parser_exceptions.InvalidMediumPostURL, medium_parser_exceptions.InvalidMediumPostID, medium_parser_exceptions.MediumPostQueryError, medium_parser_exceptions.PageLoadingError) as ex:
+    except (medium_parser_exceptions.InvalidMediumPostURL, medium_parser_exceptions.MediumPostQueryError, medium_parser_exceptions.PageLoadingError) as ex:
         logger.exception(ex)
         sentry_sdk.capture_exception(ex)
         return await generate_error(
@@ -238,8 +206,7 @@ async def render_medium_post_link(path: str):
 
 def register_main_router(app):
     app.add_api_route(path="/delete_from_cache", endpoint=delete_from_cache, methods=["POST"])
-    app.add_api_route(path="/render_no_cache/{path_key}", endpoint=render_no_cache, methods=["GET"])
-    app.add_api_route(path="/render_iframe/{iframe_id}", endpoint=render_iframe, methods=["GET"])
+    app.add_api_route(path="/render_iframe/{iframe_id}", endpoint=render_iframe, methods=["GET", "HEAD"])
     app.add_api_route(path="/report-problem", endpoint=report_problem, methods=["POST"])
     app.add_api_route(
         path="/{path:path}",

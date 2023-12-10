@@ -2,8 +2,16 @@
 
 # Same script as start_prod, but adopted to dev environment
 
-# if [ -z "$TELEGRAM_ADMIN_ID" ]; then echo "TELEGRAM_ADMIN_ID var is blank"; else echo "TELEGRAM_ADMIN_ID var is set to '$TELEGRAM_ADMIN_ID'"; fi
-# if [ -z "$TELEGRAM_BOT_TOKEN" ]; then echo "TELEGRAM_BOT_TOKEN var is blank"; else echo "TELEGRAM_BOT_TOKEN var is set to '$TELEGRAM_BOT_TOKEN'"; fi
+check_env_var() {
+    if [[ -z "${!1}" ]]; then
+        echo "$1 var is blank"
+    else
+        echo "$1 var is set to '${!1}'"
+    fi
+}
+
+check_env_var "TELEGRAM_ADMIN_ID"
+check_env_var "TELEGRAM_BOT_TOKEN"
 
 arch=$(lscpu | grep Architecture | awk {'print $2'})
 echo $arch
@@ -14,13 +22,14 @@ CADDY_PID=$!
 PYTHONASYNCIODEBUG=1 python3 -m server server &
 SERVER_PID=$!
 
-function onexit() {
+onexit() {
         echo "onexit"
         sleep 25
-        kill $CADDY_PID
-        kill $SERVER_PID
+        # kill $CADDY_PID
+        # kill $SERVER_PID
 }
-trap onexit EXIT
+
+# trap onexit EXIT
 
 sendMessageTelegram(){
     echo ${1}
@@ -34,7 +43,7 @@ sendMessageTelegram(){
 
 while true
 do
-  sleep 5
+  sleep 15
 
   CHECK_CADDY_PID=$(ps -A| grep $CADDY_PID |wc -l)
   if [[ $CHECK_CADDY_PID -eq 0 ]]; then
@@ -50,7 +59,7 @@ do
         SERVER_PID=%!
   fi
 
-  sleep 5
+  sleep 35
 
   backend_service_url="http://localhost:7080"
   backend_status_code=$(curl -m 10 -s -o /dev/null -w "%{http_code}" "$backend_service_url")
