@@ -1,8 +1,7 @@
 import asyncio
+import aiohttp
 import os
-import time
 
-import requests
 from aiogram import Bot
 from loguru import logger
 
@@ -21,8 +20,9 @@ async def main():
     while True:
         logger.debug("Checking health of freedium.cfd")
         try:
-            response = requests.get("https://freedium.cfd", timeout=3)
-            response_status = response.status_code
+            async with aiohttp.ClientSession() as session:
+                async with session.get("https://freedium.cfd", timeout=3) as response:
+                    response_status = response.status
         except Exception as ex:
             logger.exception(ex)
             response_status = "ERROR"
@@ -31,7 +31,7 @@ async def main():
                 await bot.send_message(ADMIN_CHAT_ID, "EMERGENCY! SITE IS DOWN!!!")
 
         logger.debug("Sleeping ...")
-        time.sleep(SLEEP_TIME)
+        await asyncio.sleep(SLEEP_TIME)
 
 
 asyncio.run(main())
