@@ -18,7 +18,7 @@ function onexit() {
         kill $CADDY_PID
         kill $SERVER_PID
 }
-trap onexit EXIT
+# trap onexit EXIT
 
 sendMessageTelegram(){
     echo ${1}
