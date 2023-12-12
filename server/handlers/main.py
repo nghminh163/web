@@ -88,7 +88,7 @@ async def render_iframe(iframe_id):
 
 
 @trace
-@aio_redis_cache(7 * 60)
+@aio_redis_cache(10 * 60)
 async def render_postleter(limit: int = 60, as_html: bool = False):
     random_post_id_list = [i[0] for i in medium_cache.random(limit)]
 
@@ -138,6 +138,7 @@ async def main_page():
     return HTMLResponse(minified_parsed_template)
 
 
+# TODO: refactor
 @trace
 async def render_medium_post_link(path: str, use_cache: bool = True):
     redis_available = await safe_check_redis_connection(redis_storage)
