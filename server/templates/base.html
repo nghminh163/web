@@ -287,6 +287,14 @@ document.addEventListener('scroll', function () {
             var lazyLoadInstance = new LazyLoad({
                     callback_loaded: function(element) {
         Lightense(element);
-    }
+    }, 
+    callback_error: (img) => {
+        console.log(img);
+        if (img.hasAttribute("data-src")) {
+            if (img.attributes["data-src"].value.startsWith("https://miro.medium.com/v2/")) {
+            img.setAttribute("src", img.attributes["data-src"].value.replace("https://miro.medium.com/v2/", "{{HOST_ADDRESS}}/@miro/v2/" ));
+            }
+        }
+  }
 });
 </script>

@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
          code = el.textContent;
     hljs.highlightElement(el);
           el = el.parentElement;
-         el.innerHTML = '<button class="hljs-copy p-2 bg-gray-100 dark:bg-black">Copy</button>' + el.innerHTML; // append copy button
+         el.innerHTML = '<button class="hljs-copy p-1 bg-gray-300 dark:bg-black">Copy</button>' + el.innerHTML; // append copy button
         el.getElementsByClassName('hljs-copy')[0].contentCopy = code;
          el.getElementsByClassName('hljs-copy')[0].addEventListener("click", function () {
              this.innerText = 'Copying..';

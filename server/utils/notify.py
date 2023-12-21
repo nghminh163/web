@@ -3,7 +3,7 @@ from enum import Enum
 
 from loguru import logger
 
-from server import good_bot, bad_bot, config
+from server import notification_bot, error_bot, config
 
 ADMIN_ID = config.TELEGRAM_ADMIN_ID
 
@@ -23,10 +23,10 @@ async def task_send_message(text: str, silent: bool = False, status: MessageStat
         return
 
     if status == MessageStatus.GOOD.value:
-        # bot = good_bot
+        # bot = notification_bot
         return True
     else:
-        bot = bad_bot
+        bot = error_bot
 
     if len(text) > 4000:
         logger.warning(f"Message is too long ({len(text)}): {text}")

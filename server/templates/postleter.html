@@ -43,7 +43,6 @@
 </div>
 <script>
         for (let post_a_el of document.getElementsByClassName("post_view")) {
-    console.log(post_a_el.attributes["post_id"]);
     post_a_el.href = `${window.location.origin}/${post_a_el.attributes["post_id"].value}`
 }
 </script>

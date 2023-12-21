@@ -21,7 +21,7 @@ template_safe_env = Environment(loader=FileSystemLoader("./server/templates"), u
 from server.toolkits.core.medium_parser import medium_parser_exceptions
 from server.toolkits.core.medium_parser import cache as medium_cache
 from server.toolkits.core.medium_parser.core import MediumParser
-from server.toolkits.core.medium_parser.utils import minify_html, is_valid_medium_post_id_hexadecimal
+from server.toolkits.core.medium_parser.utils import is_valid_medium_post_id_hexadecimal
 
 base_template = template_env.get_template("base.html")
 url_line_template = template_env.get_template("url_line.html").render()
@@ -36,7 +36,6 @@ error_template_raw_rendered = error_template_raw.render(url_line=url_line_templa
 error_template = jinja_env.from_string(error_template_raw_rendered)
 
 logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
-post_id_correlation: ContextVar[Optional[str]] = ContextVar("post_id_correlation", default="UNKNOWN_ID")
 url_correlation: ContextVar[Optional[str]] = ContextVar("url_correlation", default="UNKNOWN_URL")
 transponder_code_correlation: ContextVar[Optional[str]] = ContextVar("transponder_code_correlation", default="unknown transponder location... Beep!")
 
@@ -50,8 +49,8 @@ xkcd_passwd = xp.generate_wordlist(wordfile=WORDS_LIST_FILE, min_length=5, max_l
 
 if config.BAD_TELEGRAM_BOT_TOKEN and config.GOOD_TELEGRAM_BOT_TOKEN:
     from aiogram import Bot
-    good_bot = Bot(config.GOOD_TELEGRAM_BOT_TOKEN)
-    bad_bot = Bot(config.BAD_TELEGRAM_BOT_TOKEN)
+    notification_bot = Bot(config.GOOD_TELEGRAM_BOT_TOKEN)
+    error_bot = Bot(config.BAD_TELEGRAM_BOT_TOKEN)
 else:
-    good_bot = None
-    bad_bot = None
+    notification_bot = None
+    error_bot = None

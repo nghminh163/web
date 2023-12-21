@@ -24,12 +24,11 @@ SERVER_PID=$!
 
 onexit() {
         echo "onexit"
-        sleep 25
-        # kill $CADDY_PID
-        # kill $SERVER_PID
+        kill $CADDY_PID
+        kill $SERVER_PID
 }
 
-# trap onexit EXIT
+trap onexit EXIT
 
 sendMessageTelegram(){
     echo ${1}
