@@ -36,7 +36,7 @@ async def render_postleter(limit: int = 60, as_html: bool = False):
 
 
 @trace
-async def render_medium_post_link(path: str, use_cache: bool = True):
+async def render_medium_post_link(path: str, use_cache: bool = True, use_redis: bool = True):
     redis_available = await safe_check_redis_connection(redis_storage)
 
     try:
@@ -46,7 +46,7 @@ async def render_medium_post_link(path: str, use_cache: bool = True):
             url = correct_url(path)
             medium_parser = await MediumParser.from_url(url, timeout=config.TIMEOUT, host_address=config.HOST_ADDRESS)
         medium_post_id = medium_parser.post_id
-        if redis_available and use_cache:
+        if redis_available and use_cache and use_redis:
             redis_result = await redis_storage.get(medium_post_id)
         else:
             redis_result = None
@@ -93,7 +93,7 @@ async def render_medium_post_link(path: str, use_cache: bool = True):
         if not redis_result:
             if not redis_available:
                 await send_message("ERROR: Redis is not available. Please check your configuration.")
-            else:
+            elif use_redis:
                 await redis_storage.setex(medium_post_id, config.CACHE_LIFE_TIME, pickle.dumps(rendered_medium_post))
             await send_message(f"✅ Successfully rendered post: {url_correlation.get()}", True, "GOOD")
 

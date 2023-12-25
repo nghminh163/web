@@ -16,24 +16,26 @@ from server.utils.logger_trace import trace
 async def route_processing(path: str, request: Request):
     if not path:
         return await main_page()
+    if request.scope.get("query_string"):
+        path = request.url.path + "?" + request.scope["query_string"].decode()
     else:
-        if request.scope.get("query_string"):
-            path = request.url.path + "?" + request.scope["query_string"].decode()
-        else:
-            path = request.url.path
-        path = path.removeprefix("/")
+        path = request.url.path
+    path = path.removeprefix("/")
 
-        if path.startswith("render_no_cache/"):
-            path = path.removeprefix("render_no_cache/")
-            return await render_medium_post_link(path, False)
-        elif path.startswith("@miro/"):
-            miro_data = path.removeprefix("@miro/")
-            return await miro_proxy(miro_data)
-        elif path.startswith("render_iframe/"):
-            iframe_id = path.removeprefix("render_iframe/")
-            return await iframe_proxy(iframe_id)
-        else:
-            return await render_medium_post_link(path)
+    if path.startswith("render-no-cache/"):
+        path = path.removeprefix("render-no-cache/")
+        if path.startswith("/no-redis/"):
+            path = path.removeprefix("/no-redis/")
+            return await render_medium_post_link(path, False, False)
+        return await render_medium_post_link(path, False)
+    elif path.startswith("@miro/"):
+        miro_data = path.removeprefix("@miro/")
+        return await miro_proxy(miro_data)
+    elif path.startswith("render_iframe/"):
+        iframe_id = path.removeprefix("render_iframe/")
+        return await iframe_proxy(iframe_id)
+
+    return await render_medium_post_link(path)
 
 
 @trace
@@ -47,7 +49,7 @@ async def main_page():
 
 
 def register_main_router(app):
-    app.add_api_route(path="/delete_from_cache", endpoint=delete_from_cache, methods=["POST"])
+    app.add_api_route(path="/delete-from-cache", endpoint=delete_from_cache, methods=["POST"])
     app.add_api_route(path="/report-problem", endpoint=report_problem, methods=["POST"])
     app.add_api_route(
         path="/{path:path}",

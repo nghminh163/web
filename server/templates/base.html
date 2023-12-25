@@ -218,7 +218,7 @@ if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.match
         });
 
         function navigateNoCache() {
-                window.location.href = `/render_no_cache${window.location.pathname}`;
+                window.location.href = `/render-no-cache${window.location.pathname}`;
         }
 
         const submitForm = async (event) => {
