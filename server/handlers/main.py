@@ -26,7 +26,7 @@ async def route_processing(path: str, request: Request):
         path = path.removeprefix("render-no-cache/")
         if path.startswith("/no-redis/"):
             path = path.removeprefix("/no-redis/")
-            return await render_medium_post_link(path, False, False)
+            return await render_medium_post_link(path, True, False)
         return await render_medium_post_link(path, False)
     elif path.startswith("@miro/"):
         miro_data = path.removeprefix("@miro/")
