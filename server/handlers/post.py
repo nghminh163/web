@@ -52,7 +52,7 @@ async def render_medium_post_link(path: str, use_cache: bool = True, use_redis: 
             redis_result = None
         if not redis_result:
             await medium_parser.query(use_cache=use_cache)
-            rendered_medium_post = await medium_parser.render_as_html(minify=False, template_folder="server/templates")
+            rendered_medium_post = await medium_parser.render_as_html("server/templates")
         else:
             rendered_medium_post = pickle.loads(redis_result)
     except medium_parser_exceptions.InvalidURL as ex:
