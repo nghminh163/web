@@ -62,7 +62,3 @@ pip install -r server/toolkits/core/requirements.txt
 # if you have other OS or want without reverse proxy, you can execute server module without reverse proxy and access by address '0.0.0.0:7080':
 python3 -m server server
 ```
-
-## TODO:
- - Speed up using Cython
- - Introducing Freedium as a fully functional open source frontend for Medium.com!
